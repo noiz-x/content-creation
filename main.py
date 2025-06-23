@@ -63,3 +63,5 @@ async def main():
         await browser.close()
 
 asyncio.run(main())
+
+#xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" python3 /path/to/main.py
