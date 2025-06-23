@@ -3,11 +3,14 @@
 import asyncio
 from pathlib import Path
 from playwright.async_api import async_playwright
+from dotenv import load_dotenv
+import os
 
 async def main():
-    tweet_url = "https://x.com/UnscriptedFooty/status/1937068032259424331"
-    image_path = "/home/atsuomi/Pictures/samurai_champloo.jpg"
-    download_dir = Path("/home/atsuomi/Downloads")  # Adjust this to where you want to save
+    tweet_url = input("Enter the tweet URL: ")
+    image_path = input("Enter the image path: ")
+    load_dotenv()
+    download_dir = Path(os.getenv("DOWNLOAD_DIR"))
 
     if not Path(image_path).is_file():
         print(f"❌ Image not found at path: {image_path}")
@@ -28,40 +31,53 @@ async def main():
         print("🔍 Selecting tweet...")
         await page.wait_for_selector('section#loadedTweets button', timeout=15000)
         tweets = await page.query_selector_all('section#loadedTweets button')
-        if tweets:
-            await tweets[0].click()
-        else:
+        if not tweets:
             print("❌ No tweets found.")
             return
+        await tweets[0].click()
 
         print("🎨 Choosing template...")
         await page.wait_for_selector('div.css-fnxeue > div', timeout=15000)
         templates = await page.query_selector_all('div.css-fnxeue > div')
-        if len(templates) >= 2:
-            await templates[1].click()
-        else:
+        if len(templates) < 2:
             print("❌ Less than 2 templates found.")
             return
+        await templates[1].click()
+
+        # ================= SETTINGS START =================
+        print("⚙️ Setting dimensions to auto height...")
+        await page.select_option('select#dimension', 'autoHeight')
+
+        print("☑️ Enabling metrics, media, and time...")
+
+        async def enable_checkbox(label_id: str):
+            # Chakra checkbox click workaround
+            checkbox_wrapper = await page.query_selector(f'label[for="{label_id}"] + label span.chakra-checkbox__control')
+            if checkbox_wrapper:
+                is_checked = await checkbox_wrapper.get_attribute("data-checked")
+                if not is_checked:
+                    await checkbox_wrapper.click()
+                    await asyncio.sleep(0.2)  # Allow DOM update
+
+        await enable_checkbox("displayMetrics")
+        await enable_checkbox("displayEmbeds")
+        await enable_checkbox("displayTime")
+        # ================= SETTINGS END ===================
 
         print("📁 Uploading background image...")
         await page.set_input_files('input[type="file"]#backgroundImage', image_path)
 
         print("⬇️ Downloading image...")
-        # Set up listener for download BEFORE clicking download button
         async with page.expect_download() as download_info:
             await page.click('button.chakra-button.css-8oiimi')  # "Download" button
 
         download = await download_info.value
-
-        # Save to target directory with auto-generated filename
-        download_path = download.suggested_filename
-        final_path = download_dir / download_path
+        final_path = download_dir / download.suggested_filename
         await download.save_as(final_path)
 
         print(f"✅ Download complete: {final_path}")
-
         await browser.close()
 
 asyncio.run(main())
 
-#xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" python3 /path/to/main.py
+# xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" python3 /home/atsuomi/Documents/projects/content-creation/main.py
