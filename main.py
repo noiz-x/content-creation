@@ -5,6 +5,22 @@ from pathlib import Path
 from playwright.async_api import async_playwright
 from dotenv import load_dotenv
 import os
+from moviepy.editor import ImageClip
+
+def create_video_from_image(image_path: Path, output_path: Path, duration=1.5):
+    print("🎬 Converting image to video...")
+    clip = ImageClip(str(image_path)).set_duration(duration)
+
+    # Set video resolution to vertical (1080x1920)
+    clip = clip.resize(height=1920)
+    if clip.w < 1080:
+        clip = clip.margin(left=(1080 - clip.w) // 2, right=(1080 - clip.w) // 2, color=(0, 0, 0))
+    elif clip.w > 1080:
+        clip = clip.resize(width=1080)
+
+    clip = clip.set_fps(24)
+    clip.write_videofile(str(output_path), codec='libx264', audio=False, fps=24)
+    print(f"✅ Video saved to {output_path}")
 
 async def main():
     tweet_url = input("Enter the tweet URL: ")
@@ -51,13 +67,12 @@ async def main():
         print("☑️ Enabling metrics, media, and time...")
 
         async def enable_checkbox(label_id: str):
-            # Chakra checkbox click workaround
             checkbox_wrapper = await page.query_selector(f'label[for="{label_id}"] + label span.chakra-checkbox__control')
             if checkbox_wrapper:
                 is_checked = await checkbox_wrapper.get_attribute("data-checked")
                 if not is_checked:
                     await checkbox_wrapper.click()
-                    await asyncio.sleep(0.2)  # Allow DOM update
+                    await asyncio.sleep(0.2)
 
         await enable_checkbox("displayMetrics")
         await enable_checkbox("displayEmbeds")
@@ -74,10 +89,12 @@ async def main():
         download = await download_info.value
         final_path = download_dir / download.suggested_filename
         await download.save_as(final_path)
-
         print(f"✅ Download complete: {final_path}")
+
+        # Convert image to video
+        video_output = download_dir / (final_path.stem + "_reel.mp4")
+        create_video_from_image(final_path, video_output, duration=1.5)
+
         await browser.close()
 
 asyncio.run(main())
-
-# xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" python3 /home/atsuomi/Documents/projects/content-creation/main.py
