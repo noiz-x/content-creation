@@ -62,7 +62,7 @@ async def main():
 
         # ================= SETTINGS START =================
         print("⚙️ Setting dimensions to auto height...")
-        await page.select_option('select#dimension', 'autoHeight')
+        await page.select_option('select#dimension', 'instagramFeedVertical')
 
         print("☑️ Enabling metrics, media, and time...")
 
