@@ -214,5 +214,6 @@ pyrightconfig.json
 
 tweets_*.txt
 manga_panel_links.txt
+*.json
 manga_panels/
 sounds/
